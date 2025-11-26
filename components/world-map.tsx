@@ -5,13 +5,13 @@ import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simp
 import { scaleLinear } from "d3-scale"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Calendar, MapPin } from "lucide-react"
 import type { CountryHolidays } from "@/lib/types"
 
-// 1. Use the reliable standard map again 🌍
+// 1. Use the reliable standard map 🌍
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
 
 // 2. Dictionary to fix name mismatches
-// [Map Name]: [Your API Name]
 const NAME_FIXES: Record<string, string> = {
   "United States of America": "United States",
   "South Korea": "South Korea",
@@ -31,11 +31,9 @@ export function WorldMap({ data }: WorldMapProps) {
   const [selectedCountry, setSelectedCountry] = useState<CountryHolidays | null>(null)
   const [tooltipContent, setTooltipContent] = useState("")
 
-  // Create a lookup map by NAME
   const dataMap = useMemo(() => {
     const map: Record<string, number> = {}
     data.forEach(d => {
-      // We map the holiday count to the country NAME
       map[d.name] = d.holidayCount
     })
     return map
@@ -47,12 +45,16 @@ export function WorldMap({ data }: WorldMapProps) {
     .domain([0, maxHolidays])
     .range(["#ffedd5", "#ec4899"])
 
-  // Helper to find data for a map geography
   const getCountryData = (geo: any) => {
     const mapName = geo.properties.name
-    // Try exact name OR the fixed name
     const apiName = NAME_FIXES[mapName] || mapName
     return data.find(c => c.name === apiName)
+  }
+
+  // Helper to find the "Next" holiday index
+  const getNextHolidayIndex = (holidays: any[]) => {
+    const now = new Date()
+    return holidays.findIndex(h => new Date(h.date) >= now)
   }
 
   return (
@@ -66,7 +68,7 @@ export function WorldMap({ data }: WorldMapProps) {
           </p>
       </div>
 
-      <div className="glass-card rounded-3xl p-4 md:p-8 overflow-hidden relative min-h-[500px] flex items-center justify-center">
+      <div className="glass-card rounded-3xl p-4 md:p-8 overflow-hidden relative min-h-[500px] flex items-center justify-center bg-black/20">
         <ComposableMap projectionConfig={{ rotate: [-10, 0, 0], scale: 147 }}>
           <ZoomableGroup>
             <Geographies geography={GEO_URL}>
@@ -88,13 +90,13 @@ export function WorldMap({ data }: WorldMapProps) {
                       onMouseLeave={() => setTooltipContent("")}
                       style={{
                         default: {
-                          fill: count ? colorScale(count) : "#e5e7eb", 
+                          fill: count ? colorScale(count) : "#3f3f46", // Darker gray for empty
                           outline: "none",
-                          stroke: "#ffffff",
+                          stroke: "rgba(255,255,255,0.1)",
                           strokeWidth: 0.5,
                         },
                         hover: {
-                          fill: count ? "#facc15" : "#d1d5db", 
+                          fill: count ? "#facc15" : "#52525b", 
                           outline: "none",
                           cursor: count ? "pointer" : "default",
                         },
@@ -118,54 +120,87 @@ export function WorldMap({ data }: WorldMapProps) {
         )}
       </div>
 
-      {/* Sidebar Details */}
+      {/* NEW SIDEBAR DESIGN START */}
       <Sheet open={!!selectedCountry} onOpenChange={(open) => !open && setSelectedCountry(null)}>
-        <SheetContent className="w-[400px] sm:w-[540px] bg-background/95 backdrop-blur-xl border-l border-border">
+        <SheetContent className="w-full sm:max-w-md p-0 border-l border-white/10 bg-background/95 backdrop-blur-xl">
           {selectedCountry && (
-            <>
-              <SheetHeader className="mb-6">
-                <SheetTitle className="text-4xl flex items-center gap-3">
-                  <span>{selectedCountry.emoji}</span>
-                  <span className="gradient-text">{selectedCountry.name}</span>
-                </SheetTitle>
-                <SheetDescription className="text-lg">
-                  Total Holidays: <span className="font-bold text-foreground">{selectedCountry.holidayCount}</span>
-                </SheetDescription>
-              </SheetHeader>
+            <div className="flex flex-col h-full">
+              {/* 1. Tropical Header */}
+              <div className="relative h-48 bg-gradient-to-br from-tropical-cyan/20 via-background to-tropical-pink/20 p-6 flex flex-col justify-end border-b border-white/5">
+                <div className="absolute top-0 right-0 p-6 opacity-10 text-9xl grayscale pointer-events-none select-none">
+                    {selectedCountry.emoji}
+                </div>
+                <div className="relative z-10">
+                    <span className="text-5xl mb-2 block shadow-sm">{selectedCountry.emoji}</span>
+                    <SheetTitle className="text-3xl font-black tracking-tight text-white">
+                        {selectedCountry.name}
+                    </SheetTitle>
+                    <div className="flex items-center gap-3 mt-2">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 border border-white/10 text-xs font-medium text-white/80">
+                            <MapPin className="w-3 h-3" />
+                            {selectedCountry.code}
+                        </div>
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-tropical-orange/20 border border-tropical-orange/20 text-xs font-medium text-tropical-orange">
+                            <Calendar className="w-3 h-3" />
+                            {selectedCountry.holidayCount} Holidays
+                        </div>
+                    </div>
+                </div>
+              </div>
               
-              <h4 className="font-medium text-sm text-muted-foreground mb-3 uppercase tracking-wider">Upcoming & Recent</h4>
-              <ScrollArea className="h-[calc(100vh-200px)] pr-4">
-                <div className="space-y-3">
+              {/* 2. Timeline List */}
+              <ScrollArea className="flex-1 p-6">
+                <div className="relative border-l border-white/10 ml-3 space-y-8 pb-10">
                   {selectedCountry.holidays.map((h, i) => {
                     const date = new Date(h.date)
-                    const isPast = date < new Date()
+                    const now = new Date()
+                    // Reset time to compare just dates
+                    now.setHours(0,0,0,0)
+                    
+                    const isPast = date < now
+                    const isNext = i === getNextHolidayIndex(selectedCountry.holidays)
                     
                     return (
-                      <div 
-                        key={i} 
-                        className={`p-4 rounded-xl border flex items-center gap-4 transition-all hover:scale-[1.01] ${
-                          isPast ? 'bg-muted/50 border-transparent opacity-60' : 'bg-card border-tropical-cyan/30 shadow-sm'
-                        }`}
-                      >
-                        <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg ${
-                          isPast ? 'bg-muted' : 'bg-tropical-cyan/10 text-tropical-cyan'
+                      <div key={i} className={`relative pl-8 transition-all duration-500 ${isPast ? "opacity-40 grayscale" : "opacity-100"}`}>
+                        {/* Timeline Dot */}
+                        <div className={`absolute -left-[5px] top-2 w-2.5 h-2.5 rounded-full border-2 border-background ${
+                            isNext ? "bg-tropical-yellow ring-4 ring-tropical-yellow/20 scale-125 animate-pulse" 
+                            : isPast ? "bg-muted-foreground" 
+                            : "bg-tropical-cyan"
+                        }`} />
+                        
+                        {/* Card */}
+                        <div className={`p-4 rounded-xl border backdrop-blur-sm ${
+                            isNext 
+                            ? "bg-gradient-to-r from-tropical-yellow/10 to-transparent border-tropical-yellow/30" 
+                            : "bg-card/50 border-white/5"
                         }`}>
-                          <span className="text-xs font-bold uppercase">{date.toLocaleDateString('en-US', { month: 'short' })}</span>
-                          <span className="text-lg font-black">{date.getDate()}</span>
-                        </div>
-                        <div>
-                           <p className="font-semibold">{h.localName || h.name}</p>
-                           <p className="text-xs text-muted-foreground">{isPast ? 'Passed' : 'Upcoming'}</p>
+                            <div className="flex justify-between items-start mb-1">
+                                <span className={`text-xs font-bold tracking-wider uppercase ${
+                                    isNext ? "text-tropical-yellow" : "text-muted-foreground"
+                                }`}>
+                                    {date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                                </span>
+                                {isPast && <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded-full">PASSED</span>}
+                                {isNext && <span className="text-[10px] bg-tropical-yellow/20 text-tropical-yellow px-2 py-0.5 rounded-full animate-pulse">UP NEXT</span>}
+                            </div>
+                            <h4 className="text-lg font-bold leading-tight mb-1 text-foreground">
+                                {h.localName || h.name}
+                            </h4>
+                            {h.localName && h.localName !== h.name && (
+                                <p className="text-sm text-muted-foreground italic">{h.name}</p>
+                            )}
                         </div>
                       </div>
                     )
                   })}
                 </div>
               </ScrollArea>
-            </>
+            </div>
           )}
         </SheetContent>
       </Sheet>
+      {/* NEW SIDEBAR DESIGN END */}
     </section>
   )
 }
