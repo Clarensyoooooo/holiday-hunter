@@ -19,7 +19,6 @@ export function WorldMap({ data }: WorldMapProps) {
   const [selectedCountry, setSelectedCountry] = useState<CountryHolidays | null>(null)
   const [tooltipContent, setTooltipContent] = useState("")
 
-  // Create a dictionary for fast lookups: { "USA": 15, "BRA": 18 }
   const dataMap = useMemo(() => {
     const map: Record<string, number> = {}
     data.forEach(d => {
@@ -29,14 +28,17 @@ export function WorldMap({ data }: WorldMapProps) {
     return map
   }, [data])
 
-  // Color scale: Light Orange -> Hot Pink based on holiday count
+  const maxHolidays = Math.max(...data.map(d => d.holidayCount)) || 1
+
   const colorScale = scaleLinear<string>()
-    .domain([0, Math.max(...data.map(d => d.holidayCount)) || 1])
-    .range(["#ffedd5", "#ec4899"]) // Tailwind colors converted to Hex
+    .domain([0, maxHolidays])
+    .range(["#ffedd5", "#ec4899"])
 
   const handleCountryClick = (geo: any) => {
-    const iso3 = geo.properties.ISO_A3
+    // Try multiple property keys to find the code
+    const iso3 = geo.properties.ISO_A3 || geo.properties.ADM0_A3 || geo.id
     const iso2 = REVERSE_ISO_MAP[iso3]
+    
     if (iso2) {
       const countryData = data.find(c => c.code === iso2)
       if (countryData) setSelectedCountry(countryData)
@@ -60,7 +62,11 @@ export function WorldMap({ data }: WorldMapProps) {
             <Geographies geography={GEO_URL}>
               {({ geographies }) =>
                 geographies.map((geo) => {
-                  const iso3 = geo.properties.ISO_A3
+                  // DEBUG: Check your console to see what keys exist!
+                  // console.log(geo.properties) 
+
+                  // Look for the code in multiple standard places
+                  const iso3 = geo.properties.ISO_A3 || geo.properties.ADM0_A3 || geo.id
                   const count = dataMap[iso3]
                   
                   return (
@@ -69,18 +75,19 @@ export function WorldMap({ data }: WorldMapProps) {
                       geography={geo}
                       onClick={() => handleCountryClick(geo)}
                       onMouseEnter={() => {
-                        if (count) setTooltipContent(`${geo.properties.NAME}: ${count} holidays`)
+                        const name = geo.properties.NAME || geo.properties.name
+                        if (count) setTooltipContent(`${name}: ${count} holidays`)
                       }}
                       onMouseLeave={() => setTooltipContent("")}
                       style={{
                         default: {
-                          fill: count ? colorScale(count) : "#e5e7eb", // Gray if no data
+                          fill: count ? colorScale(count) : "#e5e7eb", 
                           outline: "none",
                           stroke: "#ffffff",
                           strokeWidth: 0.5,
                         },
                         hover: {
-                          fill: count ? "#facc15" : "#d1d5db", // Yellow on hover if valid
+                          fill: count ? "#facc15" : "#d1d5db",
                           outline: "none",
                           cursor: count ? "pointer" : "default",
                         },
@@ -97,15 +104,13 @@ export function WorldMap({ data }: WorldMapProps) {
           </ZoomableGroup>
         </ComposableMap>
         
-        {/* Custom Tooltip */}
         {tooltipContent && (
-           <div className="absolute top-4 left-1/2 -translate-x-1/2 glass-card px-4 py-2 rounded-full text-sm font-bold animate-in fade-in zoom-in">
+           <div className="absolute top-4 left-1/2 -translate-x-1/2 glass-card px-4 py-2 rounded-full text-sm font-bold animate-in fade-in zoom-in pointer-events-none">
              {tooltipContent}
            </div>
         )}
       </div>
 
-      {/* The Sheet (Sidebar) for details */}
       <Sheet open={!!selectedCountry} onOpenChange={(open) => !open && setSelectedCountry(null)}>
         <SheetContent className="w-[400px] sm:w-[540px] bg-background/95 backdrop-blur-xl border-l border-border">
           {selectedCountry && (

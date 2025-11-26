@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Clock, Sparkles } from "lucide-react"
+import { Clock, Sparkles, PartyPopper } from "lucide-react" // Added PartyPopper
 import type { UpcomingHoliday } from "@/lib/types"
 
 interface UpcomingBreaksProps {
@@ -23,14 +23,18 @@ export function UpcomingBreaks({ holidays }: UpcomingBreaksProps) {
     target.setHours(0, 0, 0, 0)
     const diff = target.getTime() - now.getTime()
 
-    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 }
+    // If diff is negative but it's the same day, it's TODAY!
+    const isToday = new Date(dateStr).toDateString() === now.toDateString()
+
+    if (isToday) return { isToday: true, days: 0, hours: 0, minutes: 0, seconds: 0 }
+    if (diff <= 0) return { isToday: false, days: 0, hours: 0, minutes: 0, seconds: 0 }
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
     const seconds = Math.floor((diff % (1000 * 60)) / 1000)
 
-    return { days, hours, minutes, seconds }
+    return { isToday: false, days, hours, minutes, seconds }
   }
 
   if (!nextHoliday) return null
@@ -41,6 +45,7 @@ export function UpcomingBreaks({ holidays }: UpcomingBreaksProps) {
     <section className="px-4 py-16">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
+          {/* ... Header code stays same ... */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-tropical-cyan/10 text-tropical-cyan text-sm font-medium mb-4">
             <Clock className="w-4 h-4" />
             Countdown
@@ -71,27 +76,37 @@ export function UpcomingBreaks({ holidays }: UpcomingBreaksProps) {
               })}
             </p>
 
-            <div className="flex justify-center gap-4 md:gap-8">
-              {[
-                { value: countdown.days, label: "Days" },
-                { value: countdown.hours, label: "Hours" },
-                { value: countdown.minutes, label: "Minutes" },
-                { value: countdown.seconds, label: "Seconds" },
-              ].map((item) => (
-                <div key={item.label} className="text-center">
-                  <div className="glass-card rounded-2xl p-4 md:p-6 min-w-[70px] md:min-w-[90px]">
-                    <span className="text-3xl md:text-5xl font-black gradient-text">
-                      {item.value.toString().padStart(2, "0")}
-                    </span>
-                  </div>
-                  <p className="text-xs md:text-sm text-muted-foreground mt-2">{item.label}</p>
+            {/* UPDATED TIMER LOGIC */}
+            {countdown.isToday ? (
+              <div className="animate-bounce">
+                <div className="inline-block bg-tropical-pink text-white px-8 py-4 rounded-full text-2xl md:text-4xl font-black shadow-xl">
+                  <PartyPopper className="inline-block w-8 h-8 mr-2 -mt-1" />
+                  HAPPENING TODAY!
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="flex justify-center gap-4 md:gap-8">
+                {[
+                  { value: countdown.days, label: "Days" },
+                  { value: countdown.hours, label: "Hours" },
+                  { value: countdown.minutes, label: "Minutes" },
+                  { value: countdown.seconds, label: "Seconds" },
+                ].map((item) => (
+                  <div key={item.label} className="text-center">
+                    <div className="glass-card rounded-2xl p-4 md:p-6 min-w-[70px] md:min-w-[90px]">
+                      <span className="text-3xl md:text-5xl font-black gradient-text">
+                        {item.value.toString().padStart(2, "0")}
+                      </span>
+                    </div>
+                    <p className="text-xs md:text-sm text-muted-foreground mt-2">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Upcoming List */}
+        {/* ... List code stays same ... */}
         <div className="grid gap-3">
           {holidays.slice(1).map((holiday, index) => (
             <div
