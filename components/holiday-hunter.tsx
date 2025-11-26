@@ -8,6 +8,7 @@ import { UpcomingBreaks } from "./upcoming-breaks"
 import { GlobalStats } from "./global-stats"
 import { FloatingElements } from "./floating-elements"
 import type { CountryHolidays, MonthStats, UpcomingHoliday } from "@/lib/types"
+import { WorldMap } from "./world-map"
 
 const COUNTRIES = [
   { code: "US", name: "United States", emoji: "🇺🇸" },
@@ -140,6 +141,14 @@ export default function HolidayHunter() {
 
   if (loading) {
     return (
+      <div className="min-h-screen bg-background relative overflow-hidden">
+    <FloatingElements />
+    <div className="relative z-10">
+      <HeroSection totalHolidays={totalHolidays} countriesCount={COUNTRIES.length} />
+      
+      {/* Add the Map here! It looks great after the Hero */}
+      <WorldMap data={leaderboard} />
+      
       <div className="min-h-screen flex flex-col items-center justify-center bg-background">
         <FloatingElements />
         <div className="relative z-10 text-center">
