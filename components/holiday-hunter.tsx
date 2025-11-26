@@ -39,56 +39,69 @@ export default function HolidayHunter() {
     fetchAllHolidays()
   }, [])
 
-  const fetchAllHolidays = async () => {
+ const fetchAllHolidays = async () => {
     const year = new Date().getFullYear()
     
-    // 1. Fire off ALL requests at once (Parallel Fetching) 🚀
+    // 1. Fetch all countries in parallel 🚀
     const holidayPromises = COUNTRIES.map(async (country) => {
       try {
         const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${country.code}`)
-        if (!res.ok) return null
-        const data: NagerHoliday[] = await res.json()
         
-        // 2. Filter for "Real" Days Off 🧠
-        const realHolidays = data.filter(h => {
+        // Safety check: specific to the JSON error you saw
+        if (!res.ok) return null
+        const text = await res.text() 
+        if (!text) return null // If body is empty, skip
+
+        const data = JSON.parse(text)
+        
+        // Filter for "Real" Days Off (Weekdays only)
+        const realHolidays = data.filter((h: any) => {
           const date = new Date(h.date)
           const dayOfWeek = date.getDay() // 0 = Sun, 6 = Sat
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-          
-          // Only count if it's a global holiday AND not on a weekend
-          // (You can tweak this logic if you want to include observed holidays)
-          return h.global && !isWeekend
+          return h.global && !isWeekend // Ensure we check for global holidays
         })
 
         return {
           country,
-          allHolidays: data, // Keep raw data for the list view
-          count: realHolidays.length // Use filtered count for ranking
+          rawHolidays: data,
+          count: realHolidays.length
         }
       } catch (e) {
-        console.error(e)
+        console.warn(`Failed to fetch for ${country.name}`, e)
         return null
       }
     })
 
     const results = await Promise.all(holidayPromises)
-    
-    // Process results
     const validResults = results.filter((r): r is NonNullable<typeof r> => r !== null)
-    
+
+    // 2. Re-create the Leaderboard
     const countryHolidays: CountryHolidays[] = validResults.map(r => ({
       code: r.country.code,
       name: r.country.name,
       emoji: r.country.emoji,
-      holidayCount: r.count, // Uses the "Real" count
-      holidays: r.allHolidays // Shows the user the full list details
+      holidayCount: r.count,
+      holidays: r.rawHolidays
     }))
 
     // Sort leaderboard
     countryHolidays.sort((a, b) => b.holidayCount - a.holidayCount)
     setLeaderboard(countryHolidays)
 
-    // Calculate month statistics
+    // 3. THIS WAS MISSING: Re-create the flat "allHolidays" list for analytics! 🛠️
+    const allHolidays = validResults.flatMap(r => 
+      r.rawHolidays.map((h: any) => ({
+        date: h.date,
+        name: h.name,
+        country: r.country.name,
+        countryCode: r.country.code
+      }))
+    )
+
+    setTotalHolidays(allHolidays.length)
+
+    // 4. Calculate Month Stats (Party Month)
     const monthCounts: Record<number, number> = {}
     allHolidays.forEach((h) => {
       const month = new Date(h.date).getMonth()
@@ -96,19 +109,10 @@ export default function HolidayHunter() {
     })
 
     const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December",
     ]
+    
     const stats: MonthStats[] = months.map((name, index) => ({
       month: name,
       count: monthCounts[index] || 0,
@@ -116,9 +120,10 @@ export default function HolidayHunter() {
     }))
     setMonthStats(stats)
 
-    // Find upcoming holidays
+    // 5. Calculate Upcoming Breaks
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    
     const upcoming = allHolidays
       .filter((h) => new Date(h.date) >= today)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -128,8 +133,8 @@ export default function HolidayHunter() {
         daysUntil: Math.ceil((new Date(h.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
         emoji: COUNTRIES.find((c) => c.code === h.countryCode)?.emoji || "🎉",
       }))
+      
     setUpcomingHolidays(upcoming)
-
     setLoading(false)
   }
 
