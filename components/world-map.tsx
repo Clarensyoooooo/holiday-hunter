@@ -3,13 +3,25 @@
 import { useState, useMemo } from "react"
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps"
 import { scaleLinear } from "d3-scale"
-import { ISO_MAP, REVERSE_ISO_MAP } from "@/lib/country-codes"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { CountryHolidays } from "@/lib/types"
 
-// Standard GeoJSON for the world
-const GEO_URL = "https://raw.githubusercontent.com/deldersveld/topojson/master/world-countries.json"
+// 1. Use the reliable standard map again 🌍
+const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
+
+// 2. Dictionary to fix name mismatches
+// [Map Name]: [Your API Name]
+const NAME_FIXES: Record<string, string> = {
+  "United States of America": "United States",
+  "South Korea": "South Korea",
+  "Dem. Rep. Congo": "Congo, Democratic Republic of the",
+  "Central African Rep.": "Central African Republic",
+  "Eq. Guinea": "Equatorial Guinea",
+  "Solomon Is.": "Solomon Islands",
+  "Dominican Rep.": "Dominican Republic",
+  "Bosnia and Herz.": "Bosnia and Herzegovina"
+}
 
 interface WorldMapProps {
   data: CountryHolidays[]
@@ -19,11 +31,12 @@ export function WorldMap({ data }: WorldMapProps) {
   const [selectedCountry, setSelectedCountry] = useState<CountryHolidays | null>(null)
   const [tooltipContent, setTooltipContent] = useState("")
 
+  // Create a lookup map by NAME
   const dataMap = useMemo(() => {
     const map: Record<string, number> = {}
     data.forEach(d => {
-      const iso3 = ISO_MAP[d.code]
-      if (iso3) map[iso3] = d.holidayCount
+      // We map the holiday count to the country NAME
+      map[d.name] = d.holidayCount
     })
     return map
   }, [data])
@@ -34,15 +47,12 @@ export function WorldMap({ data }: WorldMapProps) {
     .domain([0, maxHolidays])
     .range(["#ffedd5", "#ec4899"])
 
-  const handleCountryClick = (geo: any) => {
-    // Try multiple property keys to find the code
-    const iso3 = geo.properties.ISO_A3 || geo.properties.ADM0_A3 || geo.id
-    const iso2 = REVERSE_ISO_MAP[iso3]
-    
-    if (iso2) {
-      const countryData = data.find(c => c.code === iso2)
-      if (countryData) setSelectedCountry(countryData)
-    }
+  // Helper to find data for a map geography
+  const getCountryData = (geo: any) => {
+    const mapName = geo.properties.name
+    // Try exact name OR the fixed name
+    const apiName = NAME_FIXES[mapName] || mapName
+    return data.find(c => c.name === apiName)
   }
 
   return (
@@ -56,27 +66,24 @@ export function WorldMap({ data }: WorldMapProps) {
           </p>
       </div>
 
-      <div className="glass-card rounded-3xl p-4 md:p-8 overflow-hidden relative min-h-[500px]">
+      <div className="glass-card rounded-3xl p-4 md:p-8 overflow-hidden relative min-h-[500px] flex items-center justify-center">
         <ComposableMap projectionConfig={{ rotate: [-10, 0, 0], scale: 147 }}>
           <ZoomableGroup>
             <Geographies geography={GEO_URL}>
               {({ geographies }) =>
                 geographies.map((geo) => {
-                  // DEBUG: Check your console to see what keys exist!
-                  console.log(geo.properties) 
-
-                  // Look for the code in multiple standard places
-                  const iso3 = geo.properties.ISO_A3 || geo.properties.ADM0_A3 || geo.id
-                  const count = dataMap[iso3]
+                  const countryData = getCountryData(geo)
+                  const count = countryData?.holidayCount
                   
                   return (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
-                      onClick={() => handleCountryClick(geo)}
+                      onClick={() => {
+                        if (countryData) setSelectedCountry(countryData)
+                      }}
                       onMouseEnter={() => {
-                        const name = geo.properties.NAME || geo.properties.name
-                        if (count) setTooltipContent(`${name}: ${count} holidays`)
+                        if (count) setTooltipContent(`${countryData.name}: ${count} holidays`)
                       }}
                       onMouseLeave={() => setTooltipContent("")}
                       style={{
@@ -87,7 +94,7 @@ export function WorldMap({ data }: WorldMapProps) {
                           strokeWidth: 0.5,
                         },
                         hover: {
-                          fill: count ? "#facc15" : "#d1d5db",
+                          fill: count ? "#facc15" : "#d1d5db", 
                           outline: "none",
                           cursor: count ? "pointer" : "default",
                         },
@@ -105,12 +112,13 @@ export function WorldMap({ data }: WorldMapProps) {
         </ComposableMap>
         
         {tooltipContent && (
-           <div className="absolute top-4 left-1/2 -translate-x-1/2 glass-card px-4 py-2 rounded-full text-sm font-bold animate-in fade-in zoom-in pointer-events-none">
+           <div className="absolute top-4 left-1/2 -translate-x-1/2 glass-card px-4 py-2 rounded-full text-sm font-bold animate-in fade-in zoom-in pointer-events-none z-20">
              {tooltipContent}
            </div>
         )}
       </div>
 
+      {/* Sidebar Details */}
       <Sheet open={!!selectedCountry} onOpenChange={(open) => !open && setSelectedCountry(null)}>
         <SheetContent className="w-[400px] sm:w-[540px] bg-background/95 backdrop-blur-xl border-l border-border">
           {selectedCountry && (

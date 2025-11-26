@@ -64,7 +64,7 @@ export function PartyMonth({ monthStats }: PartyMonthProps) {
         {/* Chart */}
         <div className="glass-card rounded-3xl p-6 md:p-8">
           <h4 className="font-semibold mb-6 text-foreground">Holidays by Month</h4>
-          <div className="h-64 md:h-80">
+          <div className="h-64 md:h-80 w-full min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#a1a1aa", fontSize: 12 }} />
