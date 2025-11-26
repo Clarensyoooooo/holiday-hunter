@@ -1,208 +1,158 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { HeroSection } from "./hero-section"
-import { LazynessLeaderboard } from "./laziness-leaderboard"
-import { PartyMonth } from "./party-month"
-import { UpcomingBreaks } from "./upcoming-breaks"
-import { GlobalStats } from "./global-stats"
-import { FloatingElements } from "./floating-elements"
-import { WorldMap } from "./world-map" 
-import type { CountryHolidays, MonthStats, UpcomingHoliday } from "@/lib/types"
+import { useState, useMemo } from "react"
+import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps"
+import { scaleLinear } from "d3-scale"
+import { ISO_MAP, REVERSE_ISO_MAP } from "@/lib/country-codes"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import type { CountryHolidays } from "@/lib/types"
 
-// Default fallback if API fails
-const FALLBACK_COUNTRIES = [
-  { countryCode: "US", name: "United States" },
-  { countryCode: "GB", name: "United Kingdom" },
-]
+// Standard GeoJSON for the world
+const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
 
-export default function HolidayHunter() {
-  const [leaderboard, setLeaderboard] = useState<CountryHolidays[]>([])
-  const [monthStats, setMonthStats] = useState<MonthStats[]>([])
-  const [upcomingHolidays, setUpcomingHolidays] = useState<UpcomingHoliday[]>([])
-  const [totalHolidays, setTotalHolidays] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [loadingProgress, setLoadingProgress] = useState(0)
-  const [loadingText, setLoadingText] = useState("Initializing...")
+interface WorldMapProps {
+  data: CountryHolidays[]
+}
 
-  useEffect(() => {
-    startTheHunt()
-  }, [])
+export function WorldMap({ data }: WorldMapProps) {
+  const [selectedCountry, setSelectedCountry] = useState<CountryHolidays | null>(null)
+  const [tooltipContent, setTooltipContent] = useState("")
 
-  const startTheHunt = async () => {
-    const year = new Date().getFullYear()
-    
-    try {
-      // 1. Get the list of ALL available countries from the API
-      setLoadingText("Discovering countries...")
-      const countriesRes = await fetch("https://date.nager.at/api/v3/AvailableCountries")
-      
-      let targetCountries = FALLBACK_COUNTRIES
-      if (countriesRes.ok) {
-        targetCountries = await countriesRes.json()
-      }
+  // Create a dictionary for fast lookups: { "USA": 15, "BRA": 18 }
+  const dataMap = useMemo(() => {
+    const map: Record<string, number> = {}
+    data.forEach(d => {
+      const iso3 = ISO_MAP[d.code]
+      if (iso3) map[iso3] = d.holidayCount
+    })
+    return map
+  }, [data])
 
-      // 2. Fetch holidays in BATCHES to avoid rate limits/crashes
-      // We process 5 countries at a time
-      const BATCH_SIZE = 5
-      const results = []
-      
-      for (let i = 0; i < targetCountries.length; i += BATCH_SIZE) {
-        const batch = targetCountries.slice(i, i + BATCH_SIZE)
-        
-        // Update UI
-        const progress = Math.round((i / targetCountries.length) * 100)
-        setLoadingProgress(progress)
-        setLoadingText(`Scanning ${batch[0].name}...`)
+  // Color scale: Light Orange -> Hot Pink based on holiday count
+  const colorScale = scaleLinear<string>()
+    .domain([0, Math.max(...data.map(d => d.holidayCount)) || 1])
+    .range(["#ffedd5", "#ec4899"]) // Tailwind colors converted to Hex
 
-        const batchPromises = batch.map(async (c: any) => {
-          try {
-            const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${c.countryCode}`)
-            if (!res.ok) return null
-            const text = await res.text()
-            if (!text) return null
-            const data = JSON.parse(text)
-
-            // Logic: Filter mostly for weekdays to determine "Laziness" score
-            const realHolidays = data.filter((h: any) => {
-              const date = new Date(h.date)
-              const dayOfWeek = date.getDay()
-              const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-              return h.global && !isWeekend
-            })
-
-            return {
-              country: { 
-                code: c.countryCode, 
-                name: c.name,
-                // Simple emoji map based on code (optional polish: use a library for flags)
-                emoji: getFlagEmoji(c.countryCode) 
-              },
-              rawHolidays: data,
-              count: realHolidays.length
-            }
-          } catch (e) {
-            return null
-          }
-        })
-
-        const batchResults = await Promise.all(batchPromises)
-        results.push(...batchResults.filter(Boolean))
-        
-        // Small breather to be nice to the API
-        await new Promise(r => setTimeout(r, 50))
-      }
-
-      // 3. Process All Data
-      const validResults = results.filter((r): r is NonNullable<typeof r> => r !== null)
-
-      // Leaderboard
-      const countryHolidays: CountryHolidays[] = validResults.map(r => ({
-        code: r.country.code,
-        name: r.country.name,
-        emoji: r.country.emoji,
-        holidayCount: r.count,
-        holidays: r.rawHolidays
-      }))
-      countryHolidays.sort((a, b) => b.holidayCount - a.holidayCount)
-      setLeaderboard(countryHolidays)
-
-      // Flatten for analytics
-      const allHolidays = validResults.flatMap(r => 
-        r.rawHolidays.map((h: any) => ({
-          date: h.date,
-          name: h.name,
-          country: r.country.name,
-          countryCode: r.country.code
-        }))
-      )
-      setTotalHolidays(allHolidays.length)
-
-      // Party Month Stats
-      const monthCounts: Record<number, number> = {}
-      allHolidays.forEach((h) => {
-        const month = new Date(h.date).getMonth()
-        monthCounts[month] = (monthCounts[month] || 0) + 1
-      })
-      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-      const stats: MonthStats[] = months.map((name, index) => ({
-        month: name,
-        count: monthCounts[index] || 0,
-        index,
-      }))
-      setMonthStats(stats)
-
-      // Upcoming Breaks
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const upcoming = allHolidays
-        .filter((h) => new Date(h.date) >= today)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(0, 5)
-        .map((h) => ({
-          ...h,
-          daysUntil: Math.ceil((new Date(h.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
-          emoji: getFlagEmoji(h.countryCode)
-        }))
-      setUpcomingHolidays(upcoming)
-
-      setLoading(false)
-
-    } catch (error) {
-      console.error("Hunt failed:", error)
-      setLoading(false)
+  const handleCountryClick = (geo: any) => {
+    const iso3 = geo.properties.ISO_A3
+    const iso2 = REVERSE_ISO_MAP[iso3]
+    if (iso2) {
+      const countryData = data.find(c => c.code === iso2)
+      if (countryData) setSelectedCountry(countryData)
     }
   }
 
-  // Helper to get flag emoji from country code
-  function getFlagEmoji(countryCode: string) {
-    const codePoints = countryCode
-      .toUpperCase()
-      .split('')
-      .map(char =>  127397 + char.charCodeAt(0));
-    return String.fromCodePoint(...codePoints);
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-        <FloatingElements />
-        <div className="relative z-10 text-center max-w-md w-full">
-          <div className="text-6xl mb-6 animate-bounce">🌍</div>
-          <h2 className="text-2xl font-bold mb-2 gradient-text">Hunting Holidays...</h2>
-          <p className="text-muted-foreground mb-6 h-6">{loadingText}</p>
-          
-          <div className="w-full h-3 bg-secondary rounded-full overflow-hidden border border-border">
-            <div
-              className="h-full bg-gradient-to-r from-tropical-orange to-tropical-yellow transition-all duration-300 ease-out"
-              style={{ width: `${loadingProgress}%` }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground mt-3 text-right">{loadingProgress}% scanned</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      <FloatingElements />
-      <div className="relative z-10">
-        <HeroSection totalHolidays={totalHolidays} countriesCount={leaderboard.length} />
-        
-        {/* World Map Section */}
-        <WorldMap data={leaderboard} />
-        
-        <GlobalStats
-          totalHolidays={totalHolidays}
-          countriesCount={leaderboard.length}
-          topCountry={leaderboard[0]}
-          partyMonth={monthStats.reduce((a, b) => (a.count > b.count ? a : b), { month: "", count: 0, index: 0 })}
-        />
-        <LazynessLeaderboard leaderboard={leaderboard} />
-        <PartyMonth monthStats={monthStats} />
-        <UpcomingBreaks holidays={upcomingHolidays} />
+    <section className="px-4 py-16 bg-gradient-to-b from-transparent to-tropical-cyan/5">
+      <div className="max-w-6xl mx-auto text-center mb-8">
+         <h2 className="text-4xl font-black mb-4">
+            <span className="gradient-text">Global</span> Holiday Map
+          </h2>
+          <p className="text-muted-foreground">
+            Click on any highlighted country to see their upcoming breaks.
+          </p>
       </div>
-    </div>
+
+      <div className="glass-card rounded-3xl p-4 md:p-8 overflow-hidden relative min-h-[500px]">
+        <ComposableMap projectionConfig={{ rotate: [-10, 0, 0], scale: 147 }}>
+          <ZoomableGroup>
+            <Geographies geography={GEO_URL}>
+              {({ geographies }) =>
+                geographies.map((geo) => {
+                  const iso3 = geo.properties.ISO_A3
+                  const count = dataMap[iso3]
+                  
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      onClick={() => handleCountryClick(geo)}
+                      onMouseEnter={() => {
+                        if (count) setTooltipContent(`${geo.properties.NAME}: ${count} holidays`)
+                      }}
+                      onMouseLeave={() => setTooltipContent("")}
+                      style={{
+                        default: {
+                          fill: count ? colorScale(count) : "#e5e7eb", // Gray if no data
+                          outline: "none",
+                          stroke: "#ffffff",
+                          strokeWidth: 0.5,
+                        },
+                        hover: {
+                          fill: count ? "#facc15" : "#d1d5db", // Yellow on hover if valid
+                          outline: "none",
+                          cursor: count ? "pointer" : "default",
+                        },
+                        pressed: {
+                          fill: "#f97316",
+                          outline: "none",
+                        },
+                      }}
+                    />
+                  )
+                })
+              }
+            </Geographies>
+          </ZoomableGroup>
+        </ComposableMap>
+        
+        {/* Custom Tooltip */}
+        {tooltipContent && (
+           <div className="absolute top-4 left-1/2 -translate-x-1/2 glass-card px-4 py-2 rounded-full text-sm font-bold animate-in fade-in zoom-in">
+             {tooltipContent}
+           </div>
+        )}
+      </div>
+
+      {/* The Sheet (Sidebar) for details */}
+      <Sheet open={!!selectedCountry} onOpenChange={(open) => !open && setSelectedCountry(null)}>
+        <SheetContent className="w-[400px] sm:w-[540px] bg-background/95 backdrop-blur-xl border-l border-border">
+          {selectedCountry && (
+            <>
+              <SheetHeader className="mb-6">
+                <SheetTitle className="text-4xl flex items-center gap-3">
+                  <span>{selectedCountry.emoji}</span>
+                  <span className="gradient-text">{selectedCountry.name}</span>
+                </SheetTitle>
+                <SheetDescription className="text-lg">
+                  Total Holidays: <span className="font-bold text-foreground">{selectedCountry.holidayCount}</span>
+                </SheetDescription>
+              </SheetHeader>
+              
+              <h4 className="font-medium text-sm text-muted-foreground mb-3 uppercase tracking-wider">Upcoming & Recent</h4>
+              <ScrollArea className="h-[calc(100vh-200px)] pr-4">
+                <div className="space-y-3">
+                  {selectedCountry.holidays.map((h, i) => {
+                    const date = new Date(h.date)
+                    const isPast = date < new Date()
+                    
+                    return (
+                      <div 
+                        key={i} 
+                        className={`p-4 rounded-xl border flex items-center gap-4 transition-all hover:scale-[1.01] ${
+                          isPast ? 'bg-muted/50 border-transparent opacity-60' : 'bg-card border-tropical-cyan/30 shadow-sm'
+                        }`}
+                      >
+                        <div className={`flex flex-col items-center justify-center w-12 h-12 rounded-lg ${
+                          isPast ? 'bg-muted' : 'bg-tropical-cyan/10 text-tropical-cyan'
+                        }`}>
+                          <span className="text-xs font-bold uppercase">{date.toLocaleDateString('en-US', { month: 'short' })}</span>
+                          <span className="text-lg font-black">{date.getDate()}</span>
+                        </div>
+                        <div>
+                           <p className="font-semibold">{h.localName || h.name}</p>
+                           <p className="text-xs text-muted-foreground">{isPast ? 'Passed' : 'Upcoming'}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </ScrollArea>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+    </section>
   )
 }
