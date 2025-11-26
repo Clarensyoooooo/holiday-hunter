@@ -13,8 +13,25 @@ export function LazynessLeaderboard({ leaderboard }: LazynessLeaderboardProps) {
   const [showAll, setShowAll] = useState(false)
 
   const displayedCountries = showAll ? leaderboard : leaderboard.slice(0, 10)
+  // 1. Calculate the spread (Min and Max)
   const maxHolidays = leaderboard[0]?.holidayCount || 1
+  // Since leaderboard is sorted descending, the last item is the min
+  const minHolidays = leaderboard.length > 0 
+    ? leaderboard[leaderboard.length - 1].holidayCount 
+    : 0
 
+  // 2. The Visual Trick Function
+  const getBarWidth = (count: number) => {
+    if (maxHolidays === minHolidays) return 100 // Avoid division by zero
+    
+    // Calculate raw percentage relative to the spread (0 to 1)
+    const distinctness = (count - minHolidays) / (maxHolidays - minHolidays)
+    
+    // Scale it to 15% - 100% so the smallest bar is still visible
+    return 15 + (distinctness * 85)
+  }
+
+  
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 0:
@@ -73,10 +90,10 @@ export function LazynessLeaderboard({ leaderboard }: LazynessLeaderboardProps) {
                     <p className="font-bold text-lg text-foreground">{country.name}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex-1 h-2 bg-background/50 rounded-full overflow-hidden max-w-xs">
-                        <div
-                          className="h-full bg-gradient-to-r from-tropical-orange to-tropical-yellow rounded-full transition-all duration-500"
-                          style={{ width: `${(country.holidayCount / maxHolidays) * 100}%` }}
-                        />
+                       <div
+  className="h-full bg-gradient-to-r from-tropical-orange to-tropical-yellow rounded-full transition-all duration-500"
+  style={{ width: `${getBarWidth(country.holidayCount)}%` }} // <--- USE YOUR NEW FUNCTION
+/>
                       </div>
                       <span className="text-sm text-muted-foreground">{country.holidayCount} days</span>
                     </div>

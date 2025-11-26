@@ -41,42 +41,52 @@ export default function HolidayHunter() {
 
   const fetchAllHolidays = async () => {
     const year = new Date().getFullYear()
-    const countryHolidays: CountryHolidays[] = []
-    const allHolidays: { date: string; name: string; country: string; countryCode: string }[] = []
-
-    for (let i = 0; i < COUNTRIES.length; i++) {
-      const country = COUNTRIES[i]
-      setLoadingProgress(Math.round(((i + 1) / COUNTRIES.length) * 100))
-
+    
+    // 1. Fire off ALL requests at once (Parallel Fetching) 🚀
+    const holidayPromises = COUNTRIES.map(async (country) => {
       try {
-        const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${country.code}`)
-        if (response.ok) {
-          const holidays = await response.json()
-          countryHolidays.push({
-            code: country.code,
-            name: country.name,
-            emoji: country.emoji,
-            holidayCount: holidays.length,
-            holidays: holidays,
-          })
-          holidays.forEach((h: { date: string; name: string }) => {
-            allHolidays.push({
-              date: h.date,
-              name: h.name,
-              country: country.name,
-              countryCode: country.code,
-            })
-          })
-        }
-      } catch (error) {
-        console.error(`Failed to fetch holidays for ${country.name}`)
-      }
-    }
+        const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${country.code}`)
+        if (!res.ok) return null
+        const data: NagerHoliday[] = await res.json()
+        
+        // 2. Filter for "Real" Days Off 🧠
+        const realHolidays = data.filter(h => {
+          const date = new Date(h.date)
+          const dayOfWeek = date.getDay() // 0 = Sun, 6 = Sat
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+          
+          // Only count if it's a global holiday AND not on a weekend
+          // (You can tweak this logic if you want to include observed holidays)
+          return h.global && !isWeekend
+        })
 
-    // Sort leaderboard by holiday count
+        return {
+          country,
+          allHolidays: data, // Keep raw data for the list view
+          count: realHolidays.length // Use filtered count for ranking
+        }
+      } catch (e) {
+        console.error(e)
+        return null
+      }
+    })
+
+    const results = await Promise.all(holidayPromises)
+    
+    // Process results
+    const validResults = results.filter((r): r is NonNullable<typeof r> => r !== null)
+    
+    const countryHolidays: CountryHolidays[] = validResults.map(r => ({
+      code: r.country.code,
+      name: r.country.name,
+      emoji: r.country.emoji,
+      holidayCount: r.count, // Uses the "Real" count
+      holidays: r.allHolidays // Shows the user the full list details
+    }))
+
+    // Sort leaderboard
     countryHolidays.sort((a, b) => b.holidayCount - a.holidayCount)
     setLeaderboard(countryHolidays)
-    setTotalHolidays(allHolidays.length)
 
     // Calculate month statistics
     const monthCounts: Record<number, number> = {}

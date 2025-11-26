@@ -24,3 +24,13 @@ export interface UpcomingHoliday {
   daysUntil: number
   emoji: string
 }
+
+// Add this to lib/types.ts
+export interface NagerHoliday {
+  date: string
+  localName: string
+  name: string
+  countryCode: string
+  global: boolean // <--- Important!
+  types: string[]
+}
