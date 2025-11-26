@@ -63,7 +63,7 @@ export function WorldMap({ data }: WorldMapProps) {
               {({ geographies }) =>
                 geographies.map((geo) => {
                   // DEBUG: Check your console to see what keys exist!
-                  // console.log(geo.properties) 
+                  console.log(geo.properties) 
 
                   // Look for the code in multiple standard places
                   const iso3 = geo.properties.ISO_A3 || geo.properties.ADM0_A3 || geo.id
