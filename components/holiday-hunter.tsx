@@ -7,8 +7,8 @@ import { PartyMonth } from "./party-month"
 import { UpcomingBreaks } from "./upcoming-breaks"
 import { GlobalStats } from "./global-stats"
 import { FloatingElements } from "./floating-elements"
+import { WorldMap } from "./world-map" // <--- Make sure this import exists!
 import type { CountryHolidays, MonthStats, UpcomingHoliday } from "@/lib/types"
-import { WorldMap } from "./world-map"
 
 const COUNTRIES = [
   { code: "US", name: "United States", emoji: "🇺🇸" },
@@ -40,18 +40,21 @@ export default function HolidayHunter() {
     fetchAllHolidays()
   }, [])
 
- const fetchAllHolidays = async () => {
+  const fetchAllHolidays = async () => {
     const year = new Date().getFullYear()
     
     // 1. Fetch all countries in parallel 🚀
-    const holidayPromises = COUNTRIES.map(async (country) => {
+    const holidayPromises = COUNTRIES.map(async (country, i) => {
+      // Update progress bar as we start requests
+      setLoadingProgress(Math.round(((i + 1) / COUNTRIES.length) * 100))
+
       try {
         const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${country.code}`)
         
-        // Safety check: specific to the JSON error you saw
+        // Safety check: Avoid "Unexpected end of JSON" error
         if (!res.ok) return null
         const text = await res.text() 
-        if (!text) return null // If body is empty, skip
+        if (!text) return null 
 
         const data = JSON.parse(text)
         
@@ -60,7 +63,7 @@ export default function HolidayHunter() {
           const date = new Date(h.date)
           const dayOfWeek = date.getDay() // 0 = Sun, 6 = Sat
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-          return h.global && !isWeekend // Ensure we check for global holidays
+          return h.global && !isWeekend 
         })
 
         return {
@@ -90,7 +93,7 @@ export default function HolidayHunter() {
     countryHolidays.sort((a, b) => b.holidayCount - a.holidayCount)
     setLeaderboard(countryHolidays)
 
-    // 3. THIS WAS MISSING: Re-create the flat "allHolidays" list for analytics! 🛠️
+    // 3. Flatten list for analytics
     const allHolidays = validResults.flatMap(r => 
       r.rawHolidays.map((h: any) => ({
         date: h.date,
@@ -102,7 +105,7 @@ export default function HolidayHunter() {
 
     setTotalHolidays(allHolidays.length)
 
-    // 4. Calculate Month Stats (Party Month)
+    // 4. Calculate Month Stats
     const monthCounts: Record<number, number> = {}
     allHolidays.forEach((h) => {
       const month = new Date(h.date).getMonth()
@@ -139,16 +142,9 @@ export default function HolidayHunter() {
     setLoading(false)
   }
 
+  // --- This was likely the part that got messed up! ---
   if (loading) {
     return (
-      <div className="min-h-screen bg-background relative overflow-hidden">
-    <FloatingElements />
-    <div className="relative z-10">
-      <HeroSection totalHolidays={totalHolidays} countriesCount={COUNTRIES.length} />
-      
-      {/* Add the Map here! It looks great after the Hero */}
-      <WorldMap data={leaderboard} />
-      
       <div className="min-h-screen flex flex-col items-center justify-center bg-background">
         <FloatingElements />
         <div className="relative z-10 text-center">
@@ -171,11 +167,15 @@ export default function HolidayHunter() {
       <FloatingElements />
       <div className="relative z-10">
         <HeroSection totalHolidays={totalHolidays} countriesCount={COUNTRIES.length} />
+        
+        {/* World Map Section */}
+        <WorldMap data={leaderboard} />
+        
         <GlobalStats
           totalHolidays={totalHolidays}
           countriesCount={COUNTRIES.length}
           topCountry={leaderboard[0]}
-          partyMonth={monthStats.reduce((a, b) => (a.count > b.count ? a : b))}
+          partyMonth={monthStats.reduce((a, b) => (a.count > b.count ? a : b), { month: "", count: 0, index: 0 })}
         />
         <LazynessLeaderboard leaderboard={leaderboard} />
         <PartyMonth monthStats={monthStats} />
