@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import type { CountryHolidays } from "@/lib/types"
 
 // Standard GeoJSON for the world
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
+const GEO_URL = "https://raw.githubusercontent.com/deldersveld/topojson/master/world-countries.json"
 
 interface WorldMapProps {
   data: CountryHolidays[]
