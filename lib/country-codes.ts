@@ -1,14 +1,24 @@
 // lib/country-codes.ts
 
-// Simple map of ISO 2 (API) to ISO 3 (Map)
 export const ISO_MAP: Record<string, string> = {
-  US: "USA", GB: "GBR", DE: "DEU", FR: "FRA", JP: "JPN",
-  CA: "CAN", AU: "AUS", BR: "BRA", IN: "IND", MX: "MEX",
-  IT: "ITA", ES: "ESP", NL: "NLD", PL: "POL", SE: "SWE",
-  // Add more as you expand your country list...
+  US: "USA", // United States
+  GB: "GBR", // United Kingdom
+  DE: "DEU", // Germany
+  FR: "FRA", // France
+  JP: "JPN", // Japan
+  CA: "CAN", // Canada
+  AU: "AUS", // Australia
+  BR: "BRA", // Brazil
+  IN: "IND", // India
+  MX: "MEX", // Mexico
+  IT: "ITA", // Italy
+  ES: "ESP", // Spain
+  NL: "NLD", // Netherlands
+  PL: "POL", // Poland
+  SE: "SWE", // Sweden
 }
 
-// Reverse map for clicking the map to get back to API code
+// Helper to go from Map Code (USA) -> API Code (US)
 export const REVERSE_ISO_MAP = Object.entries(ISO_MAP).reduce((acc, [k, v]) => {
   acc[v] = k
   return acc
