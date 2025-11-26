@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps"
 import { scaleLinear } from "d3-scale"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet" // Removed unused imports
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Calendar, MapPin } from "lucide-react"
 import type { CountryHolidays } from "@/lib/types"
@@ -90,7 +90,7 @@ export function WorldMap({ data }: WorldMapProps) {
                       onMouseLeave={() => setTooltipContent("")}
                       style={{
                         default: {
-                          fill: count ? colorScale(count) : "#3f3f46", // Darker gray for empty
+                          fill: count ? colorScale(count) : "#3f3f46", 
                           outline: "none",
                           stroke: "rgba(255,255,255,0.1)",
                           strokeWidth: 0.5,
@@ -120,13 +120,13 @@ export function WorldMap({ data }: WorldMapProps) {
         )}
       </div>
 
-      {/* NEW SIDEBAR DESIGN START */}
+      {/* SIDEBAR START */}
       <Sheet open={!!selectedCountry} onOpenChange={(open) => !open && setSelectedCountry(null)}>
         <SheetContent className="w-full sm:max-w-md p-0 border-l border-white/10 bg-background/95 backdrop-blur-xl">
           {selectedCountry && (
             <div className="flex flex-col h-full">
-              {/* 1. Tropical Header */}
-              <div className="relative h-48 bg-gradient-to-br from-tropical-cyan/20 via-background to-tropical-pink/20 p-6 flex flex-col justify-end border-b border-white/5">
+              {/* 1. Header (Fixed Height: 12rem / 192px) */}
+              <div className="relative h-48 shrink-0 bg-gradient-to-br from-tropical-cyan/20 via-background to-tropical-pink/20 p-6 flex flex-col justify-end border-b border-white/5">
                 <div className="absolute top-0 right-0 p-6 opacity-10 text-9xl grayscale pointer-events-none select-none">
                     {selectedCountry.emoji}
                 </div>
@@ -148,13 +148,12 @@ export function WorldMap({ data }: WorldMapProps) {
                 </div>
               </div>
               
-              {/* 2. Timeline List */}
-              <ScrollArea className="flex-1 p-6">
-                <div className="relative border-l border-white/10 ml-3 space-y-8 pb-10">
+              {/* 2. List (Calculated Height: 100vh - Header) */}
+              <ScrollArea className="h-[calc(100vh-12rem)] p-6">
+                <div className="relative border-l border-white/10 ml-3 space-y-8 pb-20"> {/* Added pb-20 for bottom padding */}
                   {selectedCountry.holidays.map((h, i) => {
                     const date = new Date(h.date)
                     const now = new Date()
-                    // Reset time to compare just dates
                     now.setHours(0,0,0,0)
                     
                     const isPast = date < now
@@ -200,7 +199,6 @@ export function WorldMap({ data }: WorldMapProps) {
           )}
         </SheetContent>
       </Sheet>
-      {/* NEW SIDEBAR DESIGN END */}
     </section>
   )
 }
