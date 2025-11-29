@@ -65,40 +65,41 @@ export function LazynessLeaderboard({ leaderboard }: LazynessLeaderboardProps) {
           Honorable Mentions
         </h3>
         <div className="grid grid-cols-1 gap-3">
-          {rest.slice(0, 10).map((country, idx) => (
-            <div 
-              key={country.code}
-              className="group flex items-center gap-4 p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all hover:scale-[1.01]"
-            >
-              <span className="font-mono text-muted-foreground w-8 text-right">#{idx + 4}</span>
-              <span className="text-2xl">{country.emoji}</span>
-              <span className="font-bold text-foreground flex-1">{country.name}</span>
-              
-              <div className="flex items-center gap-4">
-                <div className="h-2 w-24 md:w-48 bg-black/50 rounded-full overflow-hidden hidden sm:block">
-                  <div 
-                    className="h-full bg-gradient-to-r from-neon-purple to-neon-pink" 
-                    style={{ width: `${(country.holidayCount / top3[0].holidayCount) * 100}%` }}
-                  />
-                </div>
-                <span className="font-mono text-neon-pink font-bold">{country.holidayCount}</span>
+          {rest.slice(0, 50).map((country, idx) => ( // Increased limit to 50
+            <div key={country.code} className="flex flex-col">
+              <div 
+                className="group flex items-center gap-4 p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all hover:scale-[1.01] cursor-pointer"
+                onClick={() => setExpanded(expanded === country.code ? null : country.code)}
+              >
+                <span className="font-mono text-muted-foreground w-8 text-right">#{idx + 4}</span>
+                <span className="text-2xl">{country.emoji}</span>
+                <span className="font-bold text-foreground flex-1">{country.name}</span>
                 
-                <button 
-                  onClick={() => setExpanded(expanded === country.code ? null : country.code)}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                >
-                  {expanded === country.code ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
+                <div className="flex items-center gap-4">
+                  <div className="h-2 w-24 md:w-48 bg-black/50 rounded-full overflow-hidden hidden sm:block">
+                    <div 
+                      className="h-full bg-gradient-to-r from-neon-purple to-neon-pink" 
+                      style={{ width: `${(country.holidayCount / top3[0].holidayCount) * 100}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-neon-pink font-bold">{country.holidayCount}</span>
+                  
+                  <div className="p-2 rounded-full transition-colors">
+                    {expanded === country.code ? <ChevronUp className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </div>
+                </div>
               </div>
 
+              {/* EXPANDED CONTENT - FIXED: No longer absolute positioning */}
               {expanded === country.code && (
-                <div className="absolute left-0 right-0 mt-16 mx-4 z-20 glass-card-maximal p-4 rounded-xl animate-in slide-in-from-top-2">
-                   {/* Fallback for simple list item expansion not breaking layout flow ideally needs refactor but keeping simple */}
-                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="mt-2 mb-4 mx-2 z-20 glass-card-maximal p-4 rounded-xl animate-in slide-in-from-top-2 border-t-0 border-neon-purple/30">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                      {country.holidays.map((h, i) => (
-                        <div key={i} className="text-xs p-2 bg-black/40 rounded border border-white/5">
-                          <div className="text-neon-cyan mb-1">{new Date(h.date).toLocaleDateString()}</div>
-                          <div className="text-white truncate">{h.localName || h.name}</div>
+                        <div key={i} className="flex flex-col p-2 bg-black/40 rounded border border-white/5 hover:border-neon-cyan/50 transition-colors">
+                          <div className="text-neon-cyan text-xs font-mono mb-1">{new Date(h.date).toLocaleDateString()}</div>
+                          <div className="text-white text-sm font-medium truncate" title={h.localName || h.name}>
+                            {h.localName || h.name}
+                          </div>
                         </div>
                      ))}
                    </div>
