@@ -1,7 +1,11 @@
+{
+type: uploaded file
+fileName: clarensyoooooo/holiday-hunter/holiday-hunter-0ea04c69fdc93da5ab65e48f8536cb698402f9d0/components/laziness-leaderboard.tsx
+fullContent:
 "use client"
 
 import { useState } from "react"
-import { Trophy, Medal, Crown, ChevronDown, ChevronUp, Calendar } from "lucide-react"
+import { Crown, Calendar, ChevronDown, ChevronUp } from "lucide-react"
 import type { CountryHolidays } from "@/lib/types"
 
 interface LazynessLeaderboardProps {
@@ -10,146 +14,105 @@ interface LazynessLeaderboardProps {
 
 export function LazynessLeaderboard({ leaderboard }: LazynessLeaderboardProps) {
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [showAll, setShowAll] = useState(false)
-
-  const displayedCountries = showAll ? leaderboard : leaderboard.slice(0, 10)
-  // 1. Calculate the spread (Min and Max)
-  const maxHolidays = leaderboard[0]?.holidayCount || 1
-  // Since leaderboard is sorted descending, the last item is the min
-  const minHolidays = leaderboard.length > 0 
-    ? leaderboard[leaderboard.length - 1].holidayCount 
-    : 0
-
-  // 2. The Visual Trick Function
-  const getBarWidth = (count: number) => {
-    if (maxHolidays === minHolidays) return 100 // Avoid division by zero
-    
-    // Calculate raw percentage relative to the spread (0 to 1)
-    const distinctness = (count - minHolidays) / (maxHolidays - minHolidays)
-    
-    // Scale it to 15% - 100% so the smallest bar is still visible
-    return 15 + (distinctness * 85)
-  }
-
   
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 0:
-        return <Crown className="w-6 h-6 text-tropical-yellow" />
-      case 1:
-        return <Medal className="w-6 h-6 text-gray-300" />
-      case 2:
-        return <Medal className="w-6 h-6 text-amber-600" />
-      default:
-        return (
-          <span className="w-6 h-6 flex items-center justify-center text-muted-foreground font-bold">{rank + 1}</span>
-        )
-    }
-  }
+  if (leaderboard.length < 3) return null
 
-  const getRankColors = (rank: number) => {
-    switch (rank) {
-      case 0:
-        return "from-tropical-yellow/20 to-tropical-orange/20 border-tropical-yellow/30"
-      case 1:
-        return "from-gray-500/20 to-gray-400/20 border-gray-400/30"
-      case 2:
-        return "from-amber-700/20 to-amber-600/20 border-amber-600/30"
-      default:
-        return "from-secondary to-secondary border-border"
-    }
-  }
+  const top3 = leaderboard.slice(0, 3)
+  const rest = leaderboard.slice(3)
 
   return (
-    <section className="px-4 py-16">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-tropical-orange/10 text-tropical-orange text-sm font-medium mb-4">
-            <Trophy className="w-4 h-4" />
-            The Rankings
+    <div className="flex flex-col gap-12">
+      <div className="text-center">
+        <h2 className="text-4xl md:text-6xl font-black text-white mb-6 uppercase tracking-tight">
+          The <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-orange via-neon-yellow to-neon-orange">Podium</span>
+        </h2>
+      </div>
+
+      {/* Podium Visualization */}
+      <div className="flex flex-col md:flex-row items-end justify-center gap-4 md:gap-8 min-h-[400px] mb-12">
+        {/* 2nd Place */}
+        <div className="order-2 md:order-1 flex-1 flex flex-col items-center">
+          <div className="text-4xl mb-4 animate-bounce" style={{ animationDelay: "0.2s" }}>{top3[1].emoji}</div>
+          <div className="text-xl font-bold text-white text-center mb-2">{top3[1].name}</div>
+          <div className="text-neon-cyan font-mono font-bold mb-2">{top3[1].holidayCount} days</div>
+          <div className="w-full h-48 glass-card-maximal border-neon-cyan/30 rounded-t-2xl bg-gradient-to-t from-neon-cyan/20 to-transparent relative group">
+             <div className="absolute inset-0 flex items-center justify-center text-6xl font-black text-white/10 group-hover:text-white/20 transition-colors">2</div>
           </div>
-          <h2 className="text-4xl md:text-5xl font-black mb-4">
-            <span className="gradient-text">Laziness</span> Leaderboard
-          </h2>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Which country has mastered the art of taking time off? Find out who&apos;s winning the holiday game!
-          </p>
         </div>
 
-        <div className="space-y-3">
-          {displayedCountries.map((country, index) => (
-            <div key={country.code}>
-              <button
-                onClick={() => setExpanded(expanded === country.code ? null : country.code)}
-                className={`w-full glass-card rounded-2xl p-4 md:p-5 border bg-gradient-to-r ${getRankColors(index)} hover:scale-[1.02] transition-all duration-300`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0">{getRankIcon(index)}</div>
-                  <span className="text-3xl">{country.emoji}</span>
-                  <div className="flex-1 text-left">
-                    <p className="font-bold text-lg text-foreground">{country.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="flex-1 h-2 bg-background/50 rounded-full overflow-hidden max-w-xs">
-                       <div
-  className="h-full bg-gradient-to-r from-tropical-orange to-tropical-yellow rounded-full transition-all duration-500"
-  style={{ width: `${getBarWidth(country.holidayCount)}%` }} // <--- USE YOUR NEW FUNCTION
-/>
-                      </div>
-                      <span className="text-sm text-muted-foreground">{country.holidayCount} days</span>
-                    </div>
-                  </div>
-                  {expanded === country.code ? (
-                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                  )}
+        {/* 1st Place */}
+        <div className="order-1 md:order-2 flex-1 flex flex-col items-center z-10 scale-110 origin-bottom">
+          <Crown className="w-12 h-12 text-neon-yellow mb-2 animate-pulse" />
+          <div className="text-6xl mb-4 animate-bounce">{top3[0].emoji}</div>
+          <div className="text-2xl font-black text-white text-center mb-2">{top3[0].name}</div>
+          <div className="text-neon-yellow font-mono font-bold mb-2 text-xl">{top3[0].holidayCount} days</div>
+          <div className="w-full h-64 glass-card-maximal border-neon-yellow/50 rounded-t-2xl bg-gradient-to-t from-neon-yellow/20 to-transparent relative shadow-[0_0_50px_-10px_rgba(250,204,21,0.3)] group">
+             <div className="absolute inset-0 flex items-center justify-center text-8xl font-black text-white/10 group-hover:text-white/20 transition-colors">1</div>
+          </div>
+        </div>
+
+        {/* 3rd Place */}
+        <div className="order-3 flex-1 flex flex-col items-center">
+          <div className="text-4xl mb-4 animate-bounce" style={{ animationDelay: "0.4s" }}>{top3[2].emoji}</div>
+          <div className="text-xl font-bold text-white text-center mb-2">{top3[2].name}</div>
+          <div className="text-neon-orange font-mono font-bold mb-2">{top3[2].holidayCount} days</div>
+          <div className="w-full h-32 glass-card-maximal border-neon-orange/30 rounded-t-2xl bg-gradient-to-t from-neon-orange/20 to-transparent relative group">
+             <div className="absolute inset-0 flex items-center justify-center text-6xl font-black text-white/10 group-hover:text-white/20 transition-colors">3</div>
+          </div>
+        </div>
+      </div>
+
+      {/* The Rest List */}
+      <div className="glass-card-maximal rounded-3xl p-6 md:p-8">
+        <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          <span className="text-muted-foreground">#4 - #{leaderboard.length}</span>
+          Honorable Mentions
+        </h3>
+        <div className="grid grid-cols-1 gap-3">
+          {rest.slice(0, 10).map((country, idx) => (
+            <div 
+              key={country.code}
+              className="group flex items-center gap-4 p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all hover:scale-[1.01]"
+            >
+              <span className="font-mono text-muted-foreground w-8 text-right">#{idx + 4}</span>
+              <span className="text-2xl">{country.emoji}</span>
+              <span className="font-bold text-foreground flex-1">{country.name}</span>
+              
+              <div className="flex items-center gap-4">
+                <div className="h-2 w-24 md:w-48 bg-black/50 rounded-full overflow-hidden hidden sm:block">
+                  <div 
+                    className="h-full bg-gradient-to-r from-neon-purple to-neon-pink" 
+                    style={{ width: `${(country.holidayCount / top3[0].holidayCount) * 100}%` }}
+                  />
                 </div>
-              </button>
+                <span className="font-mono text-neon-pink font-bold">{country.holidayCount}</span>
+                
+                <button 
+                  onClick={() => setExpanded(expanded === country.code ? null : country.code)}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                >
+                  {expanded === country.code ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+              </div>
 
               {expanded === country.code && (
-                <div className="mt-2 glass-card rounded-2xl p-4 md:p-6 animate-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Calendar className="w-5 h-5 text-tropical-cyan" />
-                    <h4 className="font-semibold text-foreground">All Holidays in {country.name}</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-                    {country.holidays.map(
-                      (holiday: { date: string; name: string; localName: string }, hIndex: number) => (
-                        <div
-                          key={hIndex}
-                          className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-background/80 transition-colors"
-                        >
-                          <span className="text-tropical-orange font-mono text-sm">
-                            {new Date(holiday.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          </span>
-                          <span className="text-sm text-foreground truncate">{holiday.localName || holiday.name}</span>
+                <div className="absolute left-0 right-0 mt-16 mx-4 z-20 glass-card-maximal p-4 rounded-xl animate-in slide-in-from-top-2">
+                   {/* Fallback for simple list item expansion not breaking layout flow ideally needs refactor but keeping simple */}
+                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                     {country.holidays.map((h, i) => (
+                        <div key={i} className="text-xs p-2 bg-black/40 rounded border border-white/5">
+                          <div className="text-neon-cyan mb-1">{new Date(h.date).toLocaleDateString()}</div>
+                          <div className="text-white truncate">{h.localName || h.name}</div>
                         </div>
-                      ),
-                    )}
-                  </div>
+                     ))}
+                   </div>
                 </div>
               )}
             </div>
           ))}
         </div>
-
-        {leaderboard.length > 10 && (
-          <button
-            onClick={() => setShowAll(!showAll)}
-            className="mt-6 mx-auto flex items-center gap-2 px-6 py-3 rounded-full glass-card hover:bg-secondary transition-colors text-foreground"
-          >
-            {showAll ? (
-              <>
-                <ChevronUp className="w-4 h-4" /> Show Less
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4" /> Show All {leaderboard.length} Countries
-              </>
-            )}
-          </button>
-        )}
       </div>
-    </section>
+    </div>
   )
+}
 }
