@@ -1,17 +1,16 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, memo } from "react"
 import { ComposableMap, Geographies, Geography, Sphere, Graticule } from "react-simple-maps"
 import { scaleLinear } from "d3-scale"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Calendar, MapPin, Globe } from "lucide-react"
+import { Calendar, MapPin, Globe, X } from "lucide-react"
 import type { CountryHolidays } from "@/lib/types"
 
-// 1. Use the reliable standard map 🌍
+// 1. Standard map URL
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
 
-// 2. Dictionary to fix name mismatches
 const NAME_FIXES: Record<string, string> = {
   "United States of America": "United States",
   "South Korea": "South Korea",
@@ -27,18 +26,74 @@ interface WorldMapProps {
   data: CountryHolidays[]
 }
 
+// Memoized Map Component to prevent parent re-renders from affecting it deeply
+const MemoizedGeographies = memo(({ 
+  geoUrl, 
+  colorScale, 
+  getCountryData, 
+  onCountryClick, 
+  onCountryHover, 
+  onCountryLeave, 
+  selectedName 
+}: any) => (
+  <Geographies geography={geoUrl}>
+    {({ geographies }) =>
+      geographies.map((geo: any) => {
+        const countryData = getCountryData(geo)
+        const count = countryData?.holidayCount
+        const isSelected = selectedName === countryData?.name
+        
+        return (
+          <Geography
+            key={geo.rsmKey}
+            geography={geo}
+            onClick={() => {
+              if (countryData) onCountryClick(countryData)
+            }}
+            onMouseEnter={() => {
+              if (count) onCountryHover(`${countryData.name}: ${count} holidays`)
+            }}
+            onMouseLeave={onCountryLeave}
+            style={{
+              default: {
+                fill: count ? colorScale(count) : "#18181b", 
+                outline: "none",
+                // Removed stroke/filter complexity for performance
+                stroke: isSelected ? "#facc15" : "rgba(255,255,255,0.05)",
+                strokeWidth: isSelected ? 2 : 0.5, 
+              },
+              hover: {
+                // Simple color change is much faster than SVG filters
+                fill: count ? "#facc15" : "#27272a", 
+                outline: "none",
+                cursor: count ? "pointer" : "default",
+              },
+              pressed: {
+                fill: "#f97316",
+                outline: "none",
+              },
+            }}
+          />
+        )
+      })
+    }
+  </Geographies>
+))
+MemoizedGeographies.displayName = "MemoizedGeographies"
+
 export function WorldMap({ data }: WorldMapProps) {
   const [selectedCountry, setSelectedCountry] = useState<CountryHolidays | null>(null)
   const [tooltipContent, setTooltipContent] = useState("")
   const [rotation, setRotation] = useState<[number, number, number]>([0, -10, 0])
   const [isHovering, setIsHovering] = useState(false)
 
-  // 3D Rotation Animation
+  // Optimized Animation Loop
   useEffect(() => {
     let requestID: number;
     const animate = () => {
+      // Only update state if user isn't interacting
       if (!isHovering && !selectedCountry) {
-        setRotation((r) => [r[0] - 0.15, r[1], r[2]]) // Smooth slow spin
+        setRotation((r) => [r[0] - 0.2, r[1], r[2]]) 
       }
       requestID = requestAnimationFrame(animate);
     };
@@ -46,19 +101,12 @@ export function WorldMap({ data }: WorldMapProps) {
     return () => cancelAnimationFrame(requestID);
   }, [isHovering, selectedCountry]);
 
-  const dataMap = useMemo(() => {
-    const map: Record<string, number> = {}
-    data.forEach(d => {
-      map[d.name] = d.holidayCount
-    })
-    return map
-  }, [data])
-
   const maxHolidays = Math.max(...data.map(d => d.holidayCount)) || 1
 
-  const colorScale = scaleLinear<string>()
+  // Memoize scales/helpers
+  const colorScale = useMemo(() => scaleLinear<string>()
     .domain([0, maxHolidays])
-    .range(["#27272a", "#ec4899"]) // Dark gray to Neon Pink
+    .range(["#27272a", "#ec4899"]), [maxHolidays])
 
   const getCountryData = (geo: any) => {
     const mapName = geo.properties.name
@@ -66,15 +114,14 @@ export function WorldMap({ data }: WorldMapProps) {
     return data.find(c => c.name === apiName)
   }
 
-  // Helper to find the "Next" holiday index
   const getNextHolidayIndex = (holidays: any[]) => {
     const now = new Date()
     return holidays.findIndex(h => new Date(h.date) >= now)
   }
 
   return (
-    <section className="px-4 py-24 relative z-10 overflow-visible">
-       <div className="max-w-6xl mx-auto text-center mb-16">
+    <section className="px-4 py-12 relative z-10 overflow-visible">
+       <div className="max-w-6xl mx-auto text-center mb-8">
          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full border border-neon-purple/30 bg-neon-purple/10 text-neon-purple font-mono text-sm tracking-widest uppercase mb-4 animate-pulse">
             <Globe className="w-4 h-4" /> Global View
          </div>
@@ -82,17 +129,17 @@ export function WorldMap({ data }: WorldMapProps) {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan via-white to-neon-purple animate-gradient-xy">Holographic</span> World
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Spin the globe to explore holiday data. Hover to pause. Click to view details.
+            Spin the globe to explore. Hover to pause.
           </p>
       </div>
 
       <div 
-        className="flex justify-center relative perspective-1000"
+        className="flex justify-center relative"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
-        {/* Glow behind the globe */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-neon-purple/20 blur-[120px] rounded-full pointer-events-none animate-pulse" />
+        {/* CSS-based Glow (GPU Accelerated) instead of SVG Filter (CPU Heavy) */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] md:w-[600px] h-[280px] md:h-[600px] rounded-full bg-neon-cyan/5 shadow-[0_0_100px_-20px_rgba(34,211,238,0.3)] pointer-events-none" />
 
         <div className="w-full max-w-[800px] aspect-square relative cursor-grab active:cursor-grabbing">
             <ComposableMap 
@@ -100,83 +147,41 @@ export function WorldMap({ data }: WorldMapProps) {
               projectionConfig={{ scale: 350, rotate: rotation }}
               height={800}
               width={800}
+              style={{ width: "100%", height: "100%" }} 
             >
-              {/* "Ocean" background and Atmosphere */}
-              <Sphere stroke="transparent" strokeWidth={0} fill="rgba(0,0,0,0.4)" id="rsm-sphere" />
+              {/* Simplified Sphere without filters */}
+              <Sphere stroke="rgba(255,255,255,0.1)" strokeWidth={1} fill="rgba(0,0,0,0.3)" id="rsm-sphere" />
               <Graticule stroke="rgba(255,255,255,0.03)" strokeWidth={0.5} />
               
-              {/* Outer Glow Ring using stroke on a second sphere (Hack) */}
-              <Sphere stroke="#22d3ee" strokeWidth={1} fill="transparent" id="rsm-atmosphere" style={{ filter: "drop-shadow(0 0 10px #22d3ee)" }} />
-
-              <Geographies geography={GEO_URL}>
-                {({ geographies }) =>
-                  geographies.map((geo) => {
-                    const countryData = getCountryData(geo)
-                    const count = countryData?.holidayCount
-                    const isSelected = selectedCountry?.name === countryData?.name
-                    
-                    return (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        onClick={() => {
-                          if (countryData) setSelectedCountry(countryData)
-                        }}
-                        onMouseEnter={() => {
-                          if (count) setTooltipContent(`${countryData.name}: ${count} holidays`)
-                        }}
-                        onMouseLeave={() => setTooltipContent("")}
-                        style={{
-                          default: {
-                            fill: count ? colorScale(count) : "#18181b", 
-                            outline: "none",
-                            stroke: isSelected ? "#facc15" : "rgba(255,255,255,0.05)",
-                            strokeWidth: isSelected ? 2 : 0.5,
-                            filter: isSelected ? "drop-shadow(0 0 10px #facc15)" : "none",
-                            transition: "all 0.3s ease"
-                          },
-                          hover: {
-                            fill: count ? "#facc15" : "#27272a", 
-                            outline: "none",
-                            stroke: "#facc15",
-                            strokeWidth: 1,
-                            cursor: count ? "pointer" : "default",
-                            filter: "drop-shadow(0 0 15px #facc15)"
-                          },
-                          pressed: {
-                            fill: "#f97316",
-                            outline: "none",
-                          },
-                        }}
-                      />
-                    )
-                  })
-                }
-              </Geographies>
+              <MemoizedGeographies 
+                geoUrl={GEO_URL}
+                colorScale={colorScale}
+                getCountryData={getCountryData}
+                onCountryClick={setSelectedCountry}
+                onCountryHover={setTooltipContent}
+                onCountryLeave={() => setTooltipContent("")}
+                selectedName={selectedCountry?.name}
+              />
             </ComposableMap>
         </div>
         
-        {/* Futuristic Floating Tooltip */}
         {tooltipContent && (
            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none">
-             <div className="glass-card-maximal px-8 py-4 rounded-full text-white font-bold backdrop-blur-xl border border-neon-cyan/50 shadow-[0_0_40px_rgba(34,211,238,0.4)] animate-in zoom-in fade-in duration-200 flex items-center gap-3">
+             <div className="glass-card-maximal px-6 py-3 rounded-full text-white font-bold backdrop-blur-xl border border-neon-cyan/50 shadow-lg animate-in zoom-in fade-in duration-200 flex items-center gap-2">
                <div className="w-2 h-2 bg-neon-cyan rounded-full animate-ping" />
-               <span className="text-lg tracking-wide">{tooltipContent}</span>
+               <span className="text-sm md:text-base tracking-wide whitespace-nowrap">{tooltipContent}</span>
              </div>
            </div>
         )}
       </div>
 
-      {/* SIDEBAR START */}
+      {/* SIDEBAR */}
       <Sheet open={!!selectedCountry} onOpenChange={(open) => !open && setSelectedCountry(null)}>
-        {/* Force high Z-index to beat the Map canvas */}
         <SheetContent className="w-full sm:max-w-md p-0 border-l border-neon-purple/20 bg-black/90 backdrop-blur-xl shadow-[0_0_100px_rgba(168,85,247,0.2)] z-[100]">
           {selectedCountry && (
             <div className="flex flex-col h-full relative overflow-hidden">
-              {/* Decorative BG */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-neon-purple/20 blur-[80px] rounded-full pointer-events-none" />
 
-              {/* 1. Header */}
               <div className="relative h-48 shrink-0 flex flex-col justify-end p-8 border-b border-white/10 z-10">
                 <div className="absolute top-6 right-6 opacity-20 text-8xl grayscale pointer-events-none select-none animate-pulse">
                     {selectedCountry.emoji}
@@ -199,7 +204,6 @@ export function WorldMap({ data }: WorldMapProps) {
                 </div>
               </div>
               
-              {/* 2. List with Proper ScrollArea */}
               <div className="flex-1 overflow-hidden relative">
                 <ScrollArea className="h-full w-full p-8">
                   <div className="relative border-l border-white/10 ml-3 space-y-8 pb-20"> 
@@ -213,14 +217,12 @@ export function WorldMap({ data }: WorldMapProps) {
                       
                       return (
                         <div key={i} className={`relative pl-8 transition-all duration-500 group ${isPast ? "opacity-40 hover:opacity-70" : "opacity-100"}`}>
-                          {/* Timeline Dot */}
                           <div className={`absolute -left-[5px] top-2 w-2.5 h-2.5 rounded-full border-2 border-black transition-all duration-300 ${
                               isNext ? "bg-neon-yellow ring-4 ring-neon-yellow/20 scale-150 animate-pulse border-none" 
                               : isPast ? "bg-muted-foreground border-muted-foreground" 
-                              : "bg-neon-cyan border-neon-cyan group-hover:scale-125 group-hover:shadow-[0_0_10px_#22d3ee]"
+                              : "bg-neon-cyan border-neon-cyan group-hover:scale-125"
                           }`} />
                           
-                          {/* Card */}
                           <div className={`p-5 rounded-xl border backdrop-blur-sm transition-all duration-300 ${
                               isNext 
                               ? "bg-gradient-to-r from-neon-yellow/10 to-transparent border-neon-yellow/30 shadow-[0_0_30px_-10px_rgba(250,204,21,0.2)]" 
