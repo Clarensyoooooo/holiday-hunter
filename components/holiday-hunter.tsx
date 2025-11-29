@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { HeroSection } from "./hero-section"
 import { LazynessLeaderboard } from "./laziness-leaderboard"
-import { PartyMonth } from "./party-month"
 import { UpcomingBreaks } from "./upcoming-breaks"
 import { GlobalStats } from "./global-stats"
 import { FloatingElements } from "./floating-elements"
@@ -212,11 +211,8 @@ export default function HolidayHunter() {
             partyMonth={monthStats.reduce((a, b) => (a.count > b.count ? a : b), { month: "", count: 0, index: 0 })}
           />
           
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+          <div className="w-full max-w-5xl mx-auto">
             <LazynessLeaderboard leaderboard={leaderboard} />
-            <div className="space-y-8 sticky top-8">
-               <PartyMonth monthStats={monthStats} />
-            </div>
           </div>
         </div>
       </main>

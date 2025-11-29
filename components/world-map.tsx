@@ -3,9 +3,9 @@
 import { useState, useMemo, useEffect } from "react"
 import { ComposableMap, Geographies, Geography, Sphere, Graticule } from "react-simple-maps"
 import { scaleLinear } from "d3-scale"
-import { Sheet, SheetContent, SheetTitle, SheetClose } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Calendar, MapPin, Globe, X } from "lucide-react"
+import { Calendar, MapPin, Globe } from "lucide-react"
 import type { CountryHolidays } from "@/lib/types"
 
 // 1. Use the reliable standard map 🌍
@@ -178,13 +178,6 @@ export function WorldMap({ data }: WorldMapProps) {
 
               {/* 1. Header */}
               <div className="relative h-48 shrink-0 flex flex-col justify-end p-8 border-b border-white/10 z-10">
-                
-                {/* MANUAL CLOSE BUTTON */}
-                <SheetClose className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors z-50 cursor-pointer text-white">
-                  <X className="w-6 h-6" />
-                  <span className="sr-only">Close</span>
-                </SheetClose>
-
                 <div className="absolute top-6 right-6 opacity-20 text-8xl grayscale pointer-events-none select-none animate-pulse">
                     {selectedCountry.emoji}
                 </div>
