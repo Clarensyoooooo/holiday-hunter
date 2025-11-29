@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Crown, Calendar, ChevronDown, ChevronUp } from "lucide-react"
+import { Crown, ChevronDown, ChevronUp } from "lucide-react"
 import type { CountryHolidays } from "@/lib/types"
 
 interface LazynessLeaderboardProps {
@@ -10,11 +10,15 @@ interface LazynessLeaderboardProps {
 
 export function LazynessLeaderboard({ leaderboard }: LazynessLeaderboardProps) {
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false) // Toggle for the long list
   
   if (leaderboard.length < 3) return null
 
   const top3 = leaderboard.slice(0, 3)
   const rest = leaderboard.slice(3)
+  
+  // Show only 7 more (Top 10 total) by default, or ALL if toggled
+  const displayedRest = showAll ? rest : rest.slice(0, 7)
 
   return (
     <div className="flex flex-col gap-12">
@@ -65,7 +69,7 @@ export function LazynessLeaderboard({ leaderboard }: LazynessLeaderboardProps) {
           Honorable Mentions
         </h3>
         <div className="grid grid-cols-1 gap-3">
-          {rest.slice(0, 50).map((country, idx) => ( // Increased limit to 50
+          {displayedRest.map((country, idx) => (
             <div key={country.code} className="flex flex-col">
               <div 
                 className="group flex items-center gap-4 p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all hover:scale-[1.01] cursor-pointer"
@@ -90,7 +94,7 @@ export function LazynessLeaderboard({ leaderboard }: LazynessLeaderboardProps) {
                 </div>
               </div>
 
-              {/* EXPANDED CONTENT - FIXED: No longer absolute positioning */}
+              {/* EXPANDED CONTENT */}
               {expanded === country.code && (
                 <div className="mt-2 mb-4 mx-2 z-20 glass-card-maximal p-4 rounded-xl animate-in slide-in-from-top-2 border-t-0 border-neon-purple/30">
                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -108,6 +112,28 @@ export function LazynessLeaderboard({ leaderboard }: LazynessLeaderboardProps) {
             </div>
           ))}
         </div>
+
+        {/* SHOW MORE / LESS BUTTON */}
+        {rest.length > 7 && (
+          <div className="mt-8 flex justify-center">
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className="group flex items-center gap-2 px-8 py-3 rounded-full bg-white/5 border border-white/10 hover:bg-neon-cyan/20 hover:border-neon-cyan/50 hover:text-neon-cyan transition-all duration-300 font-mono text-sm uppercase tracking-wider"
+            >
+              {showAll ? (
+                <>
+                  <ChevronUp className="w-4 h-4 group-hover:-translate-y-1 transition-transform" />
+                  Collapse List
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
+                  View All {leaderboard.length} Countries
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
