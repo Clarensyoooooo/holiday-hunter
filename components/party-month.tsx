@@ -1,7 +1,3 @@
-{
-type: uploaded file
-fileName: clarensyoooooo/holiday-hunter/holiday-hunter-0ea04c69fdc93da5ab65e48f8536cb698402f9d0/components/party-month.tsx
-fullContent:
 "use client"
 
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, Tooltip } from "recharts"
@@ -72,5 +68,4 @@ export function PartyMonth({ monthStats }: PartyMonthProps) {
       </div>
     </div>
   )
-}
 }

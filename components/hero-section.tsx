@@ -1,7 +1,3 @@
-{
-type: uploaded file
-fileName: clarensyoooooo/holiday-hunter/holiday-hunter-0ea04c69fdc93da5ab65e48f8536cb698402f9d0/components/hero-section.tsx
-fullContent:
 "use client"
 
 import { Palmtree, Sun, Plane, Star } from "lucide-react"
@@ -63,5 +59,4 @@ export function HeroSection({ totalHolidays, countriesCount }: HeroSectionProps)
       </div>
     </section>
   )
-}
 }

@@ -1,7 +1,3 @@
-{
-type: uploaded file
-fileName: clarensyoooooo/holiday-hunter/holiday-hunter-0ea04c69fdc93da5ab65e48f8536cb698402f9d0/app/globals.css
-fullContent:
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
@@ -152,5 +148,4 @@ fullContent:
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
-}
 }

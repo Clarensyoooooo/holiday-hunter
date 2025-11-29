@@ -1,7 +1,3 @@
-{
-type: uploaded file
-fileName: clarensyoooooo/holiday-hunter/holiday-hunter-0ea04c69fdc93da5ab65e48f8536cb698402f9d0/components/laziness-leaderboard.tsx
-fullContent:
 "use client"
 
 import { useState } from "react"
@@ -114,5 +110,4 @@ export function LazynessLeaderboard({ leaderboard }: LazynessLeaderboardProps) {
       </div>
     </div>
   )
-}
 }

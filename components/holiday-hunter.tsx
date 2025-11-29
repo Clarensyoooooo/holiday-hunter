@@ -1,7 +1,3 @@
-{
-type: uploaded file
-fileName: clarensyoooooo/holiday-hunter/holiday-hunter-0ea04c69fdc93da5ab65e48f8536cb698402f9d0/components/holiday-hunter.tsx
-fullContent:
 "use client"
 
 import { useState, useEffect } from "react"
@@ -222,5 +218,4 @@ export default function HolidayHunter() {
       </main>
     </div>
   )
-}
 }

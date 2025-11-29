@@ -1,7 +1,3 @@
-{
-type: uploaded file
-fileName: clarensyoooooo/holiday-hunter/holiday-hunter-0ea04c69fdc93da5ab65e48f8536cb698402f9d0/components/upcoming-breaks.tsx
-fullContent:
 "use client"
 
 import { useEffect, useRef } from "react"
@@ -61,5 +57,4 @@ export function UpcomingBreaks({ holidays }: UpcomingBreaksProps) {
       `}</style>
     </div>
   )
-}
 }

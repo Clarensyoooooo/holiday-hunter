@@ -1,7 +1,3 @@
-{
-type: uploaded file
-fileName: clarensyoooooo/holiday-hunter/holiday-hunter-0ea04c69fdc93da5ab65e48f8536cb698402f9d0/components/global-stats.tsx
-fullContent:
 "use client"
 
 import { Trophy, Calendar, Globe, Sparkles, Crown, Beer } from "lucide-react"
@@ -80,5 +76,4 @@ export function GlobalStats({ totalHolidays, countriesCount, topCountry, partyMo
       </div>
     </section>
   )
-}
 }
