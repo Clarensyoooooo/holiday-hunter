@@ -3,9 +3,9 @@
 import { useState, useMemo, useEffect } from "react"
 import { ComposableMap, Geographies, Geography, Sphere, Graticule } from "react-simple-maps"
 import { scaleLinear } from "d3-scale"
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle, SheetClose } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Calendar, MapPin, Globe } from "lucide-react"
+import { Calendar, MapPin, Globe, X } from "lucide-react"
 import type { CountryHolidays } from "@/lib/types"
 
 // 1. Use the reliable standard map 🌍
@@ -169,7 +169,8 @@ export function WorldMap({ data }: WorldMapProps) {
 
       {/* SIDEBAR START */}
       <Sheet open={!!selectedCountry} onOpenChange={(open) => !open && setSelectedCountry(null)}>
-        <SheetContent className="w-full sm:max-w-md p-0 border-l border-neon-purple/20 bg-black/80 backdrop-blur-xl shadow-[0_0_100px_rgba(168,85,247,0.2)]">
+        {/* Force high Z-index to beat the Map canvas */}
+        <SheetContent className="w-full sm:max-w-md p-0 border-l border-neon-purple/20 bg-black/90 backdrop-blur-xl shadow-[0_0_100px_rgba(168,85,247,0.2)] z-[100]">
           {selectedCountry && (
             <div className="flex flex-col h-full relative overflow-hidden">
               {/* Decorative BG */}
@@ -177,6 +178,13 @@ export function WorldMap({ data }: WorldMapProps) {
 
               {/* 1. Header */}
               <div className="relative h-48 shrink-0 flex flex-col justify-end p-8 border-b border-white/10 z-10">
+                
+                {/* MANUAL CLOSE BUTTON */}
+                <SheetClose className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors z-50 cursor-pointer text-white">
+                  <X className="w-6 h-6" />
+                  <span className="sr-only">Close</span>
+                </SheetClose>
+
                 <div className="absolute top-6 right-6 opacity-20 text-8xl grayscale pointer-events-none select-none animate-pulse">
                     {selectedCountry.emoji}
                 </div>
@@ -198,53 +206,55 @@ export function WorldMap({ data }: WorldMapProps) {
                 </div>
               </div>
               
-              {/* 2. List */}
-              <ScrollArea className="flex-1 p-8">
-                <div className="relative border-l border-white/10 ml-3 space-y-8 pb-20"> 
-                  {selectedCountry.holidays.map((h, i) => {
-                    const date = new Date(h.date)
-                    const now = new Date()
-                    now.setHours(0,0,0,0)
-                    
-                    const isPast = date < now
-                    const isNext = i === getNextHolidayIndex(selectedCountry.holidays)
-                    
-                    return (
-                      <div key={i} className={`relative pl-8 transition-all duration-500 group ${isPast ? "opacity-40 hover:opacity-70" : "opacity-100"}`}>
-                        {/* Timeline Dot */}
-                        <div className={`absolute -left-[5px] top-2 w-2.5 h-2.5 rounded-full border-2 border-black transition-all duration-300 ${
-                            isNext ? "bg-neon-yellow ring-4 ring-neon-yellow/20 scale-150 animate-pulse border-none" 
-                            : isPast ? "bg-muted-foreground border-muted-foreground" 
-                            : "bg-neon-cyan border-neon-cyan group-hover:scale-125 group-hover:shadow-[0_0_10px_#22d3ee]"
-                        }`} />
-                        
-                        {/* Card */}
-                        <div className={`p-5 rounded-xl border backdrop-blur-sm transition-all duration-300 ${
-                            isNext 
-                            ? "bg-gradient-to-r from-neon-yellow/10 to-transparent border-neon-yellow/30 shadow-[0_0_30px_-10px_rgba(250,204,21,0.2)]" 
-                            : "bg-white/5 border-white/5 group-hover:border-white/20 group-hover:bg-white/10"
-                        }`}>
-                            <div className="flex justify-between items-start mb-2">
-                                <span className={`text-xs font-bold tracking-widest uppercase font-mono ${
-                                    isNext ? "text-neon-yellow" : "text-muted-foreground group-hover:text-white"
-                                }`}>
-                                    {date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                                </span>
-                                {isPast && <span className="text-[10px] font-mono bg-white/5 px-2 py-0.5 rounded text-muted-foreground">PASSED</span>}
-                                {isNext && <span className="text-[10px] font-mono bg-neon-yellow/20 text-neon-yellow px-2 py-0.5 rounded animate-pulse font-bold">UP NEXT</span>}
-                            </div>
-                            <h4 className="text-lg font-bold leading-tight mb-1 text-white group-hover:text-neon-cyan transition-colors">
-                                {h.localName || h.name}
-                            </h4>
-                            {h.localName && h.localName !== h.name && (
-                                <p className="text-sm text-muted-foreground italic">{h.name}</p>
-                            )}
+              {/* 2. List with Proper ScrollArea */}
+              <div className="flex-1 overflow-hidden relative">
+                <ScrollArea className="h-full w-full p-8">
+                  <div className="relative border-l border-white/10 ml-3 space-y-8 pb-20"> 
+                    {selectedCountry.holidays.map((h, i) => {
+                      const date = new Date(h.date)
+                      const now = new Date()
+                      now.setHours(0,0,0,0)
+                      
+                      const isPast = date < now
+                      const isNext = i === getNextHolidayIndex(selectedCountry.holidays)
+                      
+                      return (
+                        <div key={i} className={`relative pl-8 transition-all duration-500 group ${isPast ? "opacity-40 hover:opacity-70" : "opacity-100"}`}>
+                          {/* Timeline Dot */}
+                          <div className={`absolute -left-[5px] top-2 w-2.5 h-2.5 rounded-full border-2 border-black transition-all duration-300 ${
+                              isNext ? "bg-neon-yellow ring-4 ring-neon-yellow/20 scale-150 animate-pulse border-none" 
+                              : isPast ? "bg-muted-foreground border-muted-foreground" 
+                              : "bg-neon-cyan border-neon-cyan group-hover:scale-125 group-hover:shadow-[0_0_10px_#22d3ee]"
+                          }`} />
+                          
+                          {/* Card */}
+                          <div className={`p-5 rounded-xl border backdrop-blur-sm transition-all duration-300 ${
+                              isNext 
+                              ? "bg-gradient-to-r from-neon-yellow/10 to-transparent border-neon-yellow/30 shadow-[0_0_30px_-10px_rgba(250,204,21,0.2)]" 
+                              : "bg-white/5 border-white/5 group-hover:border-white/20 group-hover:bg-white/10"
+                          }`}>
+                              <div className="flex justify-between items-start mb-2">
+                                  <span className={`text-xs font-bold tracking-widest uppercase font-mono ${
+                                      isNext ? "text-neon-yellow" : "text-muted-foreground group-hover:text-white"
+                                  }`}>
+                                      {date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                                  </span>
+                                  {isPast && <span className="text-[10px] font-mono bg-white/5 px-2 py-0.5 rounded text-muted-foreground">PASSED</span>}
+                                  {isNext && <span className="text-[10px] font-mono bg-neon-yellow/20 text-neon-yellow px-2 py-0.5 rounded animate-pulse font-bold">UP NEXT</span>}
+                              </div>
+                              <h4 className="text-lg font-bold leading-tight mb-1 text-white group-hover:text-neon-cyan transition-colors">
+                                  {h.localName || h.name}
+                              </h4>
+                              {h.localName && h.localName !== h.name && (
+                                  <p className="text-sm text-muted-foreground italic">{h.name}</p>
+                              )}
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </ScrollArea>
+                      )
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
             </div>
           )}
         </SheetContent>

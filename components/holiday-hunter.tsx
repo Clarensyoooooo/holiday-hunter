@@ -196,6 +196,11 @@ export default function HolidayHunter() {
       <main className="relative z-10 flex flex-col gap-12 pb-32">
         <HeroSection totalHolidays={totalHolidays} countriesCount={leaderboard.length} />
         
+        {/* SECTION 1: WORLD MAP (Now at the top) */}
+        <div className="w-full relative z-20">
+           <WorldMap data={leaderboard} />
+        </div>
+
         {/* Ticker Tape */}
         <UpcomingBreaks holidays={upcomingHolidays} />
 
@@ -209,8 +214,7 @@ export default function HolidayHunter() {
           
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
             <LazynessLeaderboard leaderboard={leaderboard} />
-            <div className="space-y-8">
-               <WorldMap data={leaderboard} />
+            <div className="space-y-8 sticky top-8">
                <PartyMonth monthStats={monthStats} />
             </div>
           </div>
